@@ -2,5 +2,6 @@
 .vagrant
 Berksfile.lock
 tmp/
+tmp2/
 !tmp/.gitignore
 !tmp/cookbooks/.gitignore
