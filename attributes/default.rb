@@ -4,9 +4,13 @@ settings = Chef::DataBagItem.load('elasticsearch', 'settings') rescue {}
 
 # === VERSION ===
 #
-default.elasticsearch[:version]  = "0.19.8"
-default.elasticsearch[:distro]  = "elasticsearch"
-default.elasticsearch[:checksum] = "6cc4c3a2439f48864050ba306c0e3569c064ad9097448b5452e11e3fc7c7d9e6"
+default.elasticsearch[:version]       = "0.19.8"
+default.elasticsearch[:repository]    = "elasticsearch/elasticsearch"
+default.elasticsearch[:filename]      = "elasticsearch-#{node.elasticsearch[:version]}.tar.gz"
+default.elasticsearch[:download_url]  = "https://github.com/downloads/" +
+                                        "#{node.elasticsearch[:repository]}/#{node.elasticsearch[:filename]}"
+
+default.elasticsearch[:checksum]      = "6cc4c3a2439f48864050ba306c0e3569c064ad9097448b5452e11e3fc7c7d9e6"
 
 # === INDEX ===
 #
@@ -27,8 +31,8 @@ default.elasticsearch[:pid_path]  = "/usr/local/var/run/elasticsearch"
 # Maximum amount of memory to use is automatically computed as 2/3 of total available memory.
 # You may choose to configure it in your node configuration instead.
 #
-max_mem = "#{(node.memory.total.to_i - (node.memory.total.to_i/3) ) / 1024}m"
 min_mem = "#{(node.memory.total.to_i - (node.memory.total.to_i/3) ) / 1024}m"
+max_mem = "#{(node.memory.total.to_i - (node.memory.total.to_i/3) ) / 1024}m"
 default.elasticsearch[:min_mem]  = min_mem
 default.elasticsearch[:max_mem]  = max_mem
 default.elasticsearch[:mlockall] = true
@@ -53,3 +57,4 @@ default.elasticsearch[:gateway][:type] = nil
 # === VARIA ===
 #
 default.elasticsearch[:disable_delete_all_indices] = true
+default.elasticsearch[:thread_stack_size]  = "256k"
