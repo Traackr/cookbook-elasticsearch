@@ -50,6 +50,11 @@ default.elasticsearch[:cluster_name]   = ( settings['cluster_name'] || "elastics
 default.elasticsearch[:index_shards]   = "5"
 default.elasticsearch[:index_replicas] = "1"
 
+# === DISCOVERY ===
+#
+default.elasticsearch[:discovery][:zen][:ping_timeout] 		   = ( settings['cloud']['zen']['ping_timeout'] 		rescue "3s" )
+default.elasticsearch[:discovery][:zen][:minimum_master_nodes] = ( settings['cloud']['zen']['minimum_master_nodes'] rescue "1"  )
+
 # === PERSISTENCE ===
 #
 default.elasticsearch[:gateway][:type] = nil
