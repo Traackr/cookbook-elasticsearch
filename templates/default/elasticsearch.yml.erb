@@ -30,7 +30,7 @@ discovery.type: <%= node.elasticsearch[:discovery][:type] %>
 <% end %>
 <% unless node.elasticsearch[:cloud][:ec2].values.compact.empty? %>
 discovery.ec2.groups: '<%= node.elasticsearch[:cloud][:ec2][:security_group] %>'
-discovery.ec2.ping_timeout: '<%= node.elasticsearch[:cloud][:ec2][:ping_timeout] %>'
+discovery.ec2.ping_timeout: <%= node.elasticsearch[:cloud][:ec2][:ping_timeout] %>
 <% end %>
 
 <% unless node.elasticsearch[:cloud][:aws].values.compact.empty? %>
@@ -40,8 +40,8 @@ cloud.aws.secret_key: '<%= node.elasticsearch[:cloud][:aws][:secret_key] %>'
 <% end %>
 
 <% unless node.elasticsearch[:discovery][:zen].values.compact.empty? %>
-discovery.zen.ping_timeout: '<%= node.elasticsearch[:discovery][:zen][:ping_timeout] %>'
-discovery.zen.minimum_master_nodes: '<%= node.elasticsearch[:discovery][:zen][:minimum_master_nodes] %>'
+discovery.zen.ping_timeout: <%= node.elasticsearch[:discovery][:zen][:ping_timeout] %>
+discovery.zen.minimum_master_nodes: <%= node.elasticsearch[:discovery][:zen][:minimum_master_nodes] %>
 <% end %>
 
 <% if node.elasticsearch[:gateway][:type] %>
