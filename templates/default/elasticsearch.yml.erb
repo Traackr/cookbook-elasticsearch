@@ -39,9 +39,9 @@ cloud.aws.access_key: '<%= node.elasticsearch[:cloud][:aws][:access_key] %>'
 cloud.aws.secret_key: '<%= node.elasticsearch[:cloud][:aws][:secret_key] %>'
 <% end %>
 
-<% unless node.elasticsearch[:discovery][:zen].values.compact.empty? %>
-discovery.zen.ping_timeout: <%= node.elasticsearch[:discovery][:zen][:ping_timeout] %>
-discovery.zen.minimum_master_nodes: <%= node.elasticsearch[:discovery][:zen][:minimum_master_nodes] %>
+<% unless node.elasticsearch[:cloud][:zen].values.compact.empty? %>
+discovery.zen.ping_timeout: <%= node.elasticsearch[:cloud][:zen][:ping_timeout] %>
+discovery.zen.minimum_master_nodes: <%= node.elasticsearch[:cloud][:zen][:minimum_master_nodes] %>
 <% end %>
 
 <% if node.elasticsearch[:gateway][:type] %>
