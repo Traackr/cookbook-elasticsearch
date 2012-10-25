@@ -113,3 +113,14 @@ else
   # ... if we aren't using monit, let's reopen the elasticsearch service and start it
   service("elasticsearch") { action :start }
 end
+
+# custum jar
+#
+
+execute "Get custum Jar" do
+  command "curl -L -o #{node.elasticsearch[:dir]}/elasticsearch/lib/#{node.elasticsearch[:jar_name]} -u #{node.elasticsearch[:jar_url_credential_user]}:#{node.elasticsearch[:jar_url_credential_pwd]} '#{node.elasticsearch[:jar_url]}'"
+	user node.elasticsearch[:user]
+	group node.elasticsearch[:user]
+	not_if (node.elasticsearch[:jar_name]=="none") 
+	notifies :restart, resources(:service => 'elasticsearch')	
+end
