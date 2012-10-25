@@ -63,3 +63,11 @@ default.elasticsearch[:gateway][:type] = nil
 #
 default.elasticsearch[:disable_delete_all_indices] = true
 default.elasticsearch[:thread_stack_size]  = "256k"
+
+
+# === CUSTUM JAR ===
+#
+default.elasticsearch[:jar_name] = "none";
+default.elasticsearch[:jar_url] = "none";
+default.elasticsearch[:jar_url_credential_user] = nil;
+default.elasticsearch[:jar_url_credential_pwd] = nil;
