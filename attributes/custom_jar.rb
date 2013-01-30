@@ -1,3 +1,8 @@
+# Load configuration and credentials from data bag 'elasticsearch/custom_jar' -
+#
+aws = Chef::DataBagItem.load('elasticsearch', 'custom_jar') rescue {}
+# ----------------------------------------------------------------------
+
 # === CUSTOM JAR ===
 #
 default.elasticsearch[:custom_jar][:name] = "none";
