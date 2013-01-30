@@ -2,7 +2,7 @@
 .vagrant
 Berksfile.lock
 Gemfile.lock
-tmp/
-tmp2/
+tmp/*
 !tmp/.gitignore
 !tmp/cookbooks/.gitignore
+!tmp/data_bags/.gitignore

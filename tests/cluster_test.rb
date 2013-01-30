@@ -11,7 +11,7 @@ describe_recipe 'elasticsearch::default' do
   cluster_url = 'http://localhost:9200'
   health_url  = "#{cluster_url}/_cluster/health"
 
-  describe "cluster health" do
+  describe "Cluster health" do
 
     it "is not red" do
       # Let's wait until the service is alive
@@ -28,7 +28,7 @@ describe_recipe 'elasticsearch::default' do
 
   end
 
-  describe "indexing and searching" do
+  describe "Indexing and searching" do
 
     it "writes test data and retrieves them" do
       # Let's wait until the service is alive
@@ -42,12 +42,13 @@ describe_recipe 'elasticsearch::default' do
       system("curl --silent --show-error -X DELETE #{cluster_url}/test_chef_cookbook")
 
       # Insert test data
+      system(%Q|curl --silent --show-error -X PUT #{cluster_url}/test_chef_cookbook -d '{"index":{"number_of_shards":1,"number_of_replicas":0}}'|)
       (1..5).each do |num|
         test_uri = URI.parse "#{cluster_url}/test_chef_cookbook/document/#{num}"
-        system(%Q|curl --silent --show-error #{cluster_url}/test_chef_cookbook/document/#{num} -d '{ "title": "Test #{num}", "time": "#{Time.now.utc}", "enabled": true }'|)
+        system(%Q|curl --silent --show-error -X PUT #{cluster_url}/test_chef_cookbook/document/#{num} -d '{ "title": "Test #{num}", "time": "#{Time.now.utc}", "enabled": true }'|)
       end
+      system("curl --silent --show-error -X POST #{cluster_url}/test_chef_cookbook/_refresh")
 
-      Net::HTTP.post_form URI.parse("#{cluster_url}/test_chef_cookbook/_refresh"), {}
       resp = Net::HTTP.get_response URI.parse("#{cluster_url}/test_chef_cookbook/_search?q=Test")
       total_hits = JSON.parse(resp.read_body)['hits']['total']
 

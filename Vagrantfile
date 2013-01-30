@@ -22,18 +22,46 @@ rescue LoadError => e
   raise e
 end
 
+# Automatically install and mount cookbooks from Berksfile
+#
+require 'berkshelf/vagrant'
+
 distributions = {
   :precise64 => {
     :url      => 'http://files.vagrantup.com/precise64.box',
-    :run_list => %w| minitest-handler apt java vim nginx monit elasticsearch elasticsearch::proxy_nginx elasticsearch::plugin_aws |,
+    :run_list => %w| apt vim java monit elasticsearch elasticsearch::plugins elasticsearch::proxy elasticsearch::aws elasticsearch::data elasticsearch::monit elasticsearch::test |,
     :ip       => '33.33.33.10',
     :primary  => true,
-    :node     => {}
+    :node     => {
+      :elasticsearch => {
+        :path => {
+          :data => %w| /usr/local/var/data/elasticsearch/disk1 /usr/local/var/data/elasticsearch/disk2 |
+        },
+        :data => {
+          :devices   => {
+            "/dev/sdb" => {
+              :file_system      => "ext3",
+              :mount_options    => "rw,user",
+              :mount_path       => "/usr/local/var/data/elasticsearch/disk1",
+              :format_command   => "mkfs.ext3 -F",
+              :fs_check_command => "dumpe2fs"
+            },
+            "/dev/sdc" => {
+              :file_system      => "ext3",
+              :mount_options    => "rw,user",
+              :mount_path       => "/usr/local/var/data/elasticsearch/disk2",
+              :format_command   => "mkfs.ext3 -F",
+              :fs_check_command => "dumpe2fs"
+            }
+          }
+        }
+      }
+    }
   },
 
   :lucid64 => {
     :url      => 'http://files.vagrantup.com/lucid64.box',
-    :run_list => %w| minitest-handler apt java vim nginx monit elasticsearch elasticsearch::proxy_nginx elasticsearch::plugin_aws |,
+    :run_list => %w| apt vim java monit elasticsearch elasticsearch::proxy elasticsearch::monit |,
     :ip       => '33.33.33.10',
     :primary  => false,
     :node     => {}
@@ -41,19 +69,39 @@ distributions = {
 
   :lucid32 => {
     :url      => 'http://files.vagrantup.com/lucid32.box',
-    :run_list => %w| minitest-handler apt java vim nginx monit elasticsearch elasticsearch::proxy_nginx |,
+    :run_list => %w| apt vim java monit elasticsearch elasticsearch::proxy elasticsearch::monit |,
     :ip       => '33.33.33.11',
     :primary  => false,
     :node     => {}
   },
 
   :centos6 => {
-    :url      => 'http://vagrant.sensuapp.org/centos-6-i386.box',
-    :run_list => %w| minitest-handler java yum::epel vim nginx elasticsearch elasticsearch::proxy_nginx |,
+    # Note: Monit cookbook broken on CentOS
+    :url      => 'https://opscode-vm.s3.amazonaws.com/vagrant/boxes/opscode-centos-6.3.box',
+    :run_list => %w| yum::epel vim java elasticsearch elasticsearch::proxy elasticsearch::data elasticsearch::test |,
     :ip       => '33.33.33.12',
     :primary  => false,
     :node     => {
+      :java => {
+        :install_flavor => "openjdk",
+        :jdk_version => "7"
+      },
       :elasticsearch => {
+        :path => {
+          :data => "/usr/local/var/data/elasticsearch/disk1"
+        },
+        :data => {
+          :devices   => {
+            "/dev/sdb" => {
+              :file_system      => "ext3",
+              :mount_options    => "rw,user",
+              :mount_path       => "/usr/local/var/data/elasticsearch/disk1",
+              :format_command   => "mkfs.ext3 -F",
+              :fs_check_command => "dumpe2fs"
+            }
+          }
+        },
+
         :nginx => {
           :user => 'nginx'
         }
@@ -64,17 +112,33 @@ distributions = {
 
 node_config = {
   :elasticsearch => {
-    :cluster_name => "elasticsearch_vagrant",
+    :cluster => { :name => "elasticsearch_vagrant" },
+
+    :plugins => {
+      'karmi/elasticsearch-paramedic' => {}
+    },
 
     :limits => {
       :nofile  => 1024,
       :memlock => 512
     },
+    :bootstrap => {
+      :mlockall => false
+    },
+
+    :logging => {
+      :discovery => 'TRACE',
+      'index.indexing.slowlog' => 'INFO, index_indexing_slow_log_file'
+    },
 
     :nginx => {
       :user  =>  'www-data',
       :users => [{ username: 'USERNAME', password: 'PASSWORD' }]
-    }
+    },
+    # For testing flat attributes:
+    "index.search.slowlog.threshold.query.trace" => "1ms",
+    # For testing deep attributes:
+    :discovery => { :zen => { :ping => { :timeout => "9s" } } }
   }
 }
 
@@ -91,10 +155,45 @@ Vagrant::Config.run do |config|
 
       box_config.vm.network   :hostonly, options[:ip]
 
-      box_config.vm.customize { |vm| vm.memory_size = 1024 } 
+      # Box customizations
+      #
+      # 1. Limit memory to 512 MB
+      #
+      box_config.vm.customize ["modifyvm", :id, "--memory", 512]
+      #
+      # 2. Create additional disks
+      #
+      if name == :precise64 or name == :centos6
+        disk1, disk2 = "tmp/disk-#{Time.now.to_f}.vdi", "tmp/disk-#{Time.now.to_f}.vdi"
+        box_config.vm.customize ["createhd", "--filename", disk1, "--size", 250]
+        box_config.vm.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1,"--type", "hdd", "--medium", disk1]
+        box_config.vm.customize ["createhd", "--filename", disk2, "--size", 250]
+        box_config.vm.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 2,"--type", "hdd", "--medium", disk2]
+      end
 
+      # Update packages on the machine
+      #
+      config.vm.provision :shell do |shell|
+        shell.inline = %Q{
+          which apt-get > /dev/null 2>&1 && apt-get update --quiet --yes && apt-get install curl --quiet --yes
+          which yum > /dev/null 2>&1 && yum update -y && yum install curl -y
+        }
+      end if ENV['UPDATE']
+
+      # Install latest Chef on the machine
+      #
+      config.vm.provision :shell do |shell|
+        version = ENV['CHEF'].match(/^\d+/) ? ENV['CHEF'] : nil
+        shell.inline = %Q{
+          test -d "/opt/chef" || curl -# -L http://www.opscode.com/chef/install.sh | sudo bash -s -- #{version ? "-v #{version}" : ''}
+        }
+      end if ENV['CHEF']
+
+      # Provision the machine with Chef Solo
+      #
       box_config.vm.provision :chef_solo do |chef|
         chef.cookbooks_path    = ['..', './tmp/cookbooks']
+        chef.data_bags_path    = './tmp/data_bags'
         chef.provisioning_path = '/etc/vagrant-chef'
         chef.log_level         = :debug
 

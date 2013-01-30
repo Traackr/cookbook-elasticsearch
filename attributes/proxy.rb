@@ -1,3 +1,6 @@
+include_attribute "elasticsearch::default"
+include_attribute "elasticsearch::nginx"
+
 # Try to load data bag item 'elasticsearch/aws' ------------------
 #
 users = Chef::DataBagItem.load('elasticsearch', 'users')['users'] rescue []
@@ -13,10 +16,14 @@ default.elasticsearch[:nginx][:dir]            = ( node.nginx[:dir]     rescue '
 default.elasticsearch[:nginx][:user]           = ( node.nginx[:user]    rescue 'nginx'          )
 default.elasticsearch[:nginx][:log_dir]        = ( node.nginx[:log_dir] rescue '/var/log/nginx' )
 default.elasticsearch[:nginx][:users]          = users
-default.elasticsearch[:nginx][:passwords_file] = "#{node.elasticsearch[:conf_path]}/passwords"
+default.elasticsearch[:nginx][:passwords_file] = "#{node.elasticsearch[:path][:conf]}/passwords"
 
 # Deny or allow authenticated access to cluster API.
 #
 # Set this to `true` if you want to use a tool like BigDesk
 #
 default.elasticsearch[:nginx][:allow_cluster_api] = false
+
+# Other Nginx proxy settings
+#
+default.elasticsearch[:nginx][:client_max_body_size] = "50M"

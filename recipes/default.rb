@@ -1,3 +1,7 @@
+[Chef::Recipe, Chef::Resource].each { |l| l.send :include, ::Extensions }
+
+Erubis::Context.send(:include, Extensions::Templates)
+
 elasticsearch = "elasticsearch-#{node.elasticsearch[:version]}"
 
 include_recipe "elasticsearch::curl"
@@ -27,8 +31,20 @@ end
 
 # Create ES directories
 #
-%w| conf_path data_path log_path pid_path |.each do |path|
-  directory node.elasticsearch[path.to_sym] do
+[ node.elasticsearch[:path][:conf], node.elasticsearch[:path][:logs], node.elasticsearch[:pid_path] ].each do |path|
+  directory path do
+    owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
+    recursive true
+    action :create
+  end
+end
+
+# Create data path directories
+#
+data_paths = node.elasticsearch[:path][:data].is_a?(Array) ? node.elasticsearch[:path][:data] : node.elasticsearch[:path][:data].split(',')
+
+data_paths.each do |path|
+  directory path.strip do
     owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
     recursive true
     action :create
@@ -57,7 +73,8 @@ ark "elasticsearch" do
   has_binaries ['bin/elasticsearch', 'bin/plugin']
   checksum node.elasticsearch[:checksum]
 
-  notifies :restart, resources(:service => 'elasticsearch')
+  notifies :start,   'service[elasticsearch]'
+  notifies :restart, 'service[elasticsearch]'
 end
 
 # Increase open file limits
@@ -80,47 +97,40 @@ bash "increase limits for the elasticsearch user" do
     echo '#{node.elasticsearch.fetch(:user, "elasticsearch")}     -    memlock   #{node.elasticsearch[:limits][:memlock]}' >> /etc/security/limits.conf
   END
 
-  not_if { ::File.read("/etc/security/limits.conf").include?("#{node.elasticsearch.fetch(:user, "elasticsearch")}     -    nofile")  }
+  not_if do
+    file = ::File.read("/etc/security/limits.conf")
+    file.include?("#{node.elasticsearch.fetch(:user, "elasticsearch")}     -    nofile    #{node.elasticsearch[:limits][:nofile]}") \
+    &&           \
+    file.include?("#{node.elasticsearch.fetch(:user, "elasticsearch")}     -    memlock   #{node.elasticsearch[:limits][:memlock]}")
+  end
 end
-
 
 # Create file with ES environment variables
 #
 template "elasticsearch-env.sh" do
-  path   "#{node.elasticsearch[:conf_path]}/elasticsearch-env.sh"
+  path   "#{node.elasticsearch[:path][:conf]}/elasticsearch-env.sh"
   source "elasticsearch-env.sh.erb"
   owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-  notifies :restart, resources(:service => 'elasticsearch')
+  notifies :restart, 'service[elasticsearch]'
 end
 
 # Create ES config file
 #
 template "elasticsearch.yml" do
-  path   "#{node.elasticsearch[:conf_path]}/elasticsearch.yml"
+  path   "#{node.elasticsearch[:path][:conf]}/elasticsearch.yml"
   source "elasticsearch.yml.erb"
   owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-  notifies :restart, resources(:service => 'elasticsearch')
+  notifies :restart, 'service[elasticsearch]'
 end
 
-# Add Monit configuration file
+# Create ES logging file
 #
-if node.recipes.include?('monit')
-  monitrc("elasticsearch",
-          :pidfile => "#{node.elasticsearch[:pid_path]}/#{node.elasticsearch[:node_name].to_s.gsub(/\W/, '_')}.pid")
-else
-  # ... if we aren't using monit, let's reopen the elasticsearch service and start it
-  service("elasticsearch") { action :start }
-end
+template "logging.yml" do
+  path   "#{node.elasticsearch[:path][:conf]}/logging.yml"
+  source "logging.yml.erb"
+  owner node.elasticsearch[:user] and group node.elasticsearch[:user] and mode 0755
 
-# custum jar
-#
-
-execute "Get custum Jar" do
-  command "curl -L -o #{node.elasticsearch[:dir]}/elasticsearch/lib/#{node.elasticsearch[:jar_name]} -u #{node.elasticsearch[:jar_url_credential_user]}:#{node.elasticsearch[:jar_url_credential_pwd]} '#{node.elasticsearch[:jar_url]}'"
-	user node.elasticsearch[:user]
-	group node.elasticsearch[:user]
-	not_if (node.elasticsearch[:jar_name]=="none") 
-	notifies :restart, resources(:service => 'elasticsearch')	
+  notifies :restart, 'service[elasticsearch]'
 end

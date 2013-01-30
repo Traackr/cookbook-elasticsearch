@@ -20,7 +20,7 @@ describe_recipe 'elasticsearch::default' do
       file("/usr/local/elasticsearch-#{version}/lib/elasticsearch-#{version}.jar").
         must_exist.
         with(:owner, 'elasticsearch')
-    end unless Chef::VERSION > '0.10.8' # TODO: Unbrake this when Chef gets sane with symlinks again
+    end if Chef::VERSION > '10.14'
 
     it "has a link to versioned directory" do
       version = node[:elasticsearch][:version]
@@ -33,13 +33,32 @@ describe_recipe 'elasticsearch::default' do
 
     it "creates configuration files" do
       file("/usr/local/etc/elasticsearch/elasticsearch.yml").
-        must_exist.
-        must_include("cluster.name: 'elasticsearch_vagrant'").
-        must_include("path.data: /usr/local/var/data/elasticsearch")
+        must_exist
 
       file("/usr/local/etc/elasticsearch/elasticsearch-env.sh").
         must_exist.
         must_include("ES_HOME='/usr/local/elasticsearch'")
+    end
+
+    it "creates the configuration file with proper content" do
+      file("/usr/local/etc/elasticsearch/elasticsearch.yml").
+        must_include("cluster.name: elasticsearch_vagrant").
+        must_include("path.data: /usr/local/var/data/elasticsearch/disk1").
+        must_include("bootstrap.mlockall: false").
+        must_include("index.search.slowlog.threshold.query.trace: 1ms").
+        must_include("discovery.zen.ping.timeout: 9s")
+
+      if node.name == 'precise64'
+        file("/usr/local/etc/elasticsearch/elasticsearch.yml").
+          must_include("node.name: precise64")
+      end
+    end
+
+    it "creates logging file" do
+      file("/usr/local/etc/elasticsearch/logging.yml").
+        must_exist.
+        must_include("logger.action: DEBUG").
+        must_include("logger.discovery: TRACE")
     end
 
   end
