@@ -365,6 +365,19 @@
 # See <http://elasticsearch.org/tutorials/2011/08/22/elasticsearch-on-ec2.html>
 # for a step-by-step tutorial.
 
+<% if node.elasticsearch[:discovery][:type] %>
+discovery.type: <%= node.elasticsearch[:discovery][:type] %>
+<% end %>
+<% unless node.elasticsearch[:cloud][:ec2].values.compact.empty? %>
+discovery.ec2.groups: '<%= node.elasticsearch[:cloud][:ec2][:security_group] %>'
+discovery.ec2.ping_timeout: <%= node.elasticsearch[:cloud][:ec2][:ping_timeout] %>
+<% end %>
+
+<% unless node.elasticsearch[:cloud][:aws].values.compact.empty? %>
+cloud.node.auto_attributes: true
+cloud.aws.access_key: '<%= node.elasticsearch[:cloud][:aws][:access_key] %>'
+cloud.aws.secret_key: '<%= node.elasticsearch[:cloud][:aws][:secret_key] %>'
+<% end %>
 
 ################################## Slow Log ##################################
 
