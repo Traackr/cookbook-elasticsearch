@@ -1,3 +1,3 @@
 # === CUSTOM JAR ===
 #
-default.elasticsearch[:custom_jars] = []
+default.elasticsearch[:custom_jars] = nil
