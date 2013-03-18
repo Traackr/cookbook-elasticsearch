@@ -67,6 +67,8 @@ default.elasticsearch[:discovery][:zen][:ping][:multicast][:enabled] = true
 default.elasticsearch[:discovery][:zen][:minimum_master_nodes] = 1
 default.elasticsearch[:gateway][:type] = 'local'
 default.elasticsearch[:gateway][:expected_nodes] = 1
+default.elasticsearch[:gateway][:recover_after_nodes] = 1
+default.elasticsearch[:gateway][:recover_after_time] = '2m'
 
 default.elasticsearch[:cloud][:node][:auto_attributes] = true
 
