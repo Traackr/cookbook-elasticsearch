@@ -14,7 +14,7 @@ ES_JAVA_OPTS="
   -Des.config=<%= node.elasticsearch[:path][:conf] %>/elasticsearch.yml
   -Dbootstrap.mlockall=<%= node.elasticsearch[:bootstrap][:mlockall] %>
 <% if node.elasticsearch[:spm] %>
-  -Dcom.sun.management.jmxremote -javaagent:<%= node.elasticsearch[:spm][:path] %>/lib/spm-monitor-es.jar=<%= node.elasticsearch[:spm][:key] %>::default
+  -Dcom.sun.management.jmxremote -javaagent:<%= node.elasticsearch[:spm][:path] %>/spm-monitor/lib/spm-monitor-es.jar=<%= node.elasticsearch[:spm][:key] %>::default
 <% end %>
   -Xms<%= node.elasticsearch[:allocated_memory] %>
   -Xmx<%= node.elasticsearch[:allocated_memory] %>
